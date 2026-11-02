@@ -13,7 +13,7 @@ import { QueueEditor, type QueueQuestion } from '../features/competition/QueueEd
 import { useAsync } from '../hooks/useAsync';
 import { competitionService } from '../services/competitionService';
 import { toApiError, type ApiError } from '../services/apiClient';
-import type { DirectQuestionInput, ProgressionMode } from '../types';
+import type { DirectQuestionInput } from '../types';
 import { formatDateTime, formatDuration } from '../utils/format';
 
 const STATUS_FILTERS = ['', 'DRAFT', 'WAITING', 'RUNNING', 'PAUSED', 'COMPLETED', 'CANCELLED'];
@@ -23,10 +23,6 @@ function CreateCompetitionForm({ onCancel }: { onCancel: () => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [minutes, setMinutes] = useState(30);
-  const [mode, setMode] = useState<ProgressionMode>('AUTOMATIC');
-  const [revealAnswers, setRevealAnswers] = useState(true);
-  const [showLeaderboard, setShowLeaderboard] = useState(true);
-  const [completeWhenEmpty, setCompleteWhenEmpty] = useState(false);
   const [entryMode, setEntryMode] = useState<'direct' | 'bank'>('direct');
   const [directQuestions, setDirectQuestions] = useState<DirectQuestionInput[]>([]);
   const [queue, setQueue] = useState<QueueQuestion[]>([]);
@@ -42,8 +38,8 @@ function CreateCompetitionForm({ onCancel }: { onCancel: () => void }) {
         name,
         description,
         durationSeconds: Math.round(minutes * 60),
-        questionProgressionMode: mode,
-        settings: { revealAnswers, showLeaderboardToStudents: showLeaderboard, completeWhenQueueEmpty: completeWhenEmpty },
+        questionProgressionMode: 'AUTOMATIC',
+        settings: {},
         ...(entryMode === 'direct' && directQuestions.length > 0
           ? { questions: directQuestions }
           : { questionIds: queue.map((q) => q.id) }),
@@ -64,20 +60,9 @@ function CreateCompetitionForm({ onCancel }: { onCancel: () => void }) {
       <ErrorAlert error={error} title="Could not create the competition" />
       <div className="form-grid">
         <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} required minLength={3} maxLength={120} error={error?.fieldErrors.name} />
-        <TextField label="Duration (minutes)" type="number" min={1} max={360} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} hint="Default 30 minutes" error={error?.fieldErrors.durationSeconds} />
-        <SelectField
-          label="Question progression"
-          value={mode}
-          onChange={(e) => setMode(e.target.value as ProgressionMode)}
-          options={[{ value: 'AUTOMATIC', label: 'Self-paced (participants answer questions in order)' }, { value: 'MANUAL', label: 'Manual' }]}
-        />
+        <TextField label="Duration (minutes)" type="number" min={1} max={360} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} hint="Each student's own timer, starting when they click Start Test" error={error?.fieldErrors.durationSeconds} />
       </div>
       <TextAreaField label="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} />
-      <div className="row">
-        <label className="checkbox"><input type="checkbox" checked={revealAnswers} onChange={(e) => setRevealAnswers(e.target.checked)} /> Reveal the correct answer when each question closes</label>
-        <label className="checkbox"><input type="checkbox" checked={showLeaderboard} onChange={(e) => setShowLeaderboard(e.target.checked)} /> Show the live leaderboard to students</label>
-        <label className="checkbox"><input type="checkbox" checked={completeWhenEmpty} onChange={(e) => setCompleteWhenEmpty(e.target.checked)} /> End automatically when questions run out</label>
-      </div>
 
       <div className="row" style={{ gap: 8, marginTop: 8 }}>
         <button

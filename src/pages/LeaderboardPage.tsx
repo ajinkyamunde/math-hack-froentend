@@ -10,10 +10,13 @@ import { resultService } from '../services/resultService';
 export function LeaderboardPage() {
   const { id } = useParams();
   const competition = useAsync(() => competitionService.studentState(id!), [id]);
-  const completed = competition.data?.status === 'COMPLETED';
+  // Results unlock when this student's own test is over (finished or timed out), or when the competition ends.
+  const mySession = useAsync(() => competitionService.mySession(id!).catch(() => null), [id]);
+  const ownStatus = mySession.data?.session?.status;
+  const completed = competition.data?.status === 'COMPLETED' || ownStatus === 'COMPLETED' || ownStatus === 'EXPIRED' || ownStatus === 'SUBMITTED';
   const result = useAsync(() => (completed ? resultService.myResult(id!) : Promise.resolve(null)), [id, completed]);
 
-  if (competition.loading && !competition.data) return <Loading />;
+  if ((competition.loading && !competition.data) || (mySession.loading && !mySession.data)) return <Loading />;
 
   const removedError =
     competition.error?.message?.includes('removed by the host')

@@ -63,7 +63,7 @@ export function useCompetitionSocket<TState>(
               competitionId,
               status: 'ACTIVE',
               startedAt: statusRes.startedAt,
-            });
+            } as never);
           }
         } catch {
           // ignore polling failure
@@ -72,8 +72,7 @@ export function useCompetitionSocket<TState>(
     };
 
     // Construct SSE events URL
-    const baseUrl = API_BASE_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost') ? 'http://localhost:4000' : '');
-    const eventsUrl = `${baseUrl}/api/competitions/${competitionId}/events`;
+    const eventsUrl = `${API_BASE_URL}/api/competitions/${competitionId}/events`;
 
     try {
       const eventSource = new EventSource(eventsUrl, { withCredentials: true });
@@ -118,7 +117,7 @@ export function useCompetitionSocket<TState>(
               isUnlockedRef.current = true;
               stopPolling();
             }
-            handlersRef.current[event]?.(data);
+            handlersRef.current[event]?.(data as never);
           } catch {
             handlersRef.current[event]?.(e.data as never);
           }

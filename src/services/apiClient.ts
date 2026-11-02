@@ -1,40 +1,18 @@
 import axios, { AxiosError } from 'axios';
 
 /**
- * Empty in development (Vite proxies /api) and when running on Vercel/production reverse proxy.
- * Keeping API requests on the same origin ensures iOS Safari/Chrome treats cookies as 1st-party
- * and never blocks them under Intelligent Tracking Prevention (ITP).
+ * The API is always called on the page's own origin: Vite proxies /api in development, and Vercel's
+ * /api rewrite (vercel.json) forwards it to the Cloudflare Worker in production. Same-origin requests keep the
+ * session cookie first-party, so iOS Safari's tracking prevention never blocks it.
+ * VITE_API_URL is only honoured for local development against a remote API.
  */
 export const API_BASE_URL = (() => {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    // On Vercel or any public deployed web origin, always route to same-origin /api reverse-proxy
-    if (host.endsWith('.vercel.app') || (!host.includes('localhost') && !host.includes('127.0.0.1'))) {
-      return '';
-    }
+    if (host !== 'localhost' && host !== '127.0.0.1') return '';
   }
-  const envUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
-  if (typeof window !== 'undefined' && envUrl.includes('onrender.com')) {
-    return '';
-  }
-  return envUrl;
+  return (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 })();
-
-/** Resolves the direct backend server URL (used for persistent WebSockets). */
-export const getBackendUrl = (): string => {
-  const envUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/api\/?$/, '').replace(/\/$/, '');
-  if (envUrl) return envUrl;
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host.endsWith('.vercel.app')) {
-      return 'https://mathhack-backend.onrender.com';
-    }
-    if (host === 'localhost' || host === '127.0.0.1') {
-      return 'http://localhost:4000';
-    }
-  }
-  return '';
-};
 
 let csrfToken: string | null = null;
 

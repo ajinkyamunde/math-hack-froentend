@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://mathhack-backend.onrender.com/api/$1"
+      "destination": "https://mathhack-api.YOUR-SUBDOMAIN.workers.dev/api/$1"
     },
     {
       "source": "/(.*)",

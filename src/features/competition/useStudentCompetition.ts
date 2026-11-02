@@ -177,6 +177,11 @@ export function useStudentCompetition(competitionId: string | undefined) {
       },
       'competition:completed': () => {
         setState((prev) => (prev ? { ...prev, status: 'COMPLETED' } : prev));
+        setExamCompleted(true);
+      },
+      // Sent by the server the moment this student's own timer runs out (even if the tab was in the background).
+      'session:expired': () => {
+        setExamCompleted(true);
       },
       'participant:removed': (payload: { competitionId: string; message: string }) => {
         if (payload.competitionId === competitionId) {

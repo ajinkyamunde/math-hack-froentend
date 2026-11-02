@@ -3,11 +3,12 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '..', 'VITE_');
-  const backend = process.env.MATHHACK_BACKEND_URL ?? 'http://localhost:4000';
+  const env = loadEnv(mode, '.', 'VITE_');
+  // `npm run dev` in the backend repo serves the Worker on port 8787.
+  const backend = process.env.MATHHACK_BACKEND_URL ?? 'http://localhost:8787';
   return {
     plugins: [react()],
-    envDir: '..',
+    envDir: '.',
     server: {
       port: 5173,
       strictPort: true,

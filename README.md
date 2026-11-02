@@ -31,13 +31,12 @@ npm install
 
 ### 2. Environment Configuration
 
-Copy the example environment file:
+Start the backend Worker locally first (`npm run dev` in the backend repo, port 8787). The Vite dev server
+proxies `/api` there, so no configuration is needed. To proxy somewhere else:
 
 ```bash
-cp .env.example .env
+MATHHACK_BACKEND_URL=https://mathhack-api.your-subdomain.workers.dev npm run dev
 ```
-
-Configure `VITE_API_URL` to point to your backend API server (e.g. `http://localhost:4000` or production Render backend URL).
 
 ### 3. Development Server
 
@@ -63,13 +62,24 @@ The application will be available at `http://localhost:5173`.
 
 ## Deployment
 
-### Vercel Deployment
-This repository includes a production `vercel.json` with single-page application rewrites and `/api/*` proxy rules.
-Simply connect this repository to Vercel and set `VITE_API_URL` in your environment variables.
+The backend is a Cloudflare Worker. The browser always calls `/api` on the frontend's own origin and the
+hosting layer forwards it to the Worker, so the session cookie stays first-party (important on iOS Safari).
 
-### Docker Deployment
-A production `Dockerfile` and `nginx.conf` are included for containerized hosting.
+### Vercel
+Edit `vercel.json` and replace `mathhack-api.YOUR-SUBDOMAIN.workers.dev` with your Worker's address, then
+connect the repository to Vercel. No environment variables are needed. Set the Worker's `FRONTEND_URL` to
+your Vercel site's address.
+
+### Docker
 ```bash
 docker build -t mathhack-frontend .
-docker run -p 80:80 mathhack-frontend
+docker run -p 80:80 -e API_ORIGIN=https://mathhack-api.your-subdomain.workers.dev mathhack-frontend
 ```
+
+### How the game works
+1. Students register and join a competition once the host opens registration.
+2. When the host starts the competition, every Start Test button unlocks at once.
+3. Each student clicks Start Test when ready and gets their own timer (the competition's duration).
+4. Answers lock as soon as they are submitted.
+5. A student's test ends when they press Submit & Finish or their timer runs out; their results are shown right away.
+6. The host ends the competition when everyone is done; that also stops anyone still answering.

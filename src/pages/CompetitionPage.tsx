@@ -235,8 +235,8 @@ export function CompetitionPage() {
           <p className="muted" style={{ margin: '0 0 16px 0' }}>
             Your responses have been successfully recorded and scored.
           </p>
-          {state.status === 'COMPLETED' ? (
-            <Link className="btn btn--gold" to={`/student/competitions/${state.id}/leaderboard`}>See final results</Link>
+          {state.status === 'COMPLETED' || (live.examCompleted && state.status !== 'CANCELLED') ? (
+            <Link className="btn btn--gold" to={`/student/competitions/${state.id}/leaderboard`}>See your results</Link>
           ) : (
             <Link className="btn" to="/student">Back to dashboard</Link>
           )}

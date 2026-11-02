@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Alert, ErrorAlert } from '../components/common/Alert';
+import { ErrorAlert } from '../components/common/Alert';
 import { DifficultyBadge, StatusBadge } from '../components/common/Badges';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Loading } from '../components/common/Loading';
@@ -10,11 +10,9 @@ import { LeaderboardTable } from '../components/leaderboard/LeaderboardTable';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BulkQuestionEditor } from '../features/competition/BulkQuestionEditor';
 import { useHostCompetition } from '../features/competition/useHostCompetition';
-import { useNow } from '../hooks/useNow';
 import { resultService } from '../services/resultService';
 import type { DirectQuestionInput, HostCompetitionState, OptionKey } from '../types';
 import { formatClock, formatDuration } from '../utils/format';
-import { remainingUntil } from '../utils/serverClock';
 
 interface QuestionDetails {
   id: string;
@@ -43,7 +41,6 @@ export function CompetitionControlPage() {
   const { id } = useParams();
   const live = useHostCompetition(id);
   const { state } = live;
-  const now = useNow(250, state?.status === 'RUNNING');
   const [confirm, setConfirm] = useState<'end' | 'cancel' | null>(null);
   const [editingQuestions, setEditingQuestions] = useState(false);
   const [draftQuestions, setDraftQuestions] = useState<DirectQuestionInput[]>([]);
@@ -85,11 +82,9 @@ export function CompetitionControlPage() {
 
   if (!state) return live.error ? <ErrorAlert error={live.error} /> : <Loading label="Linking to competition…" />;
 
-  const paused = state.status === 'PAUSED';
   const running = state.status === 'RUNNING';
-  const active = running || paused;
+  const active = running || state.status === 'PAUSED';
   const finished = state.status === 'COMPLETED' || state.status === 'CANCELLED';
-  const competitionLeft = paused ? state.remainingMs : state.endsAt ? remainingUntil(state.endsAt, undefined, now) : state.durationSeconds * 1000;
   const canEditQuestions = !finished && (state.status === 'DRAFT' || state.status === 'WAITING');
   const busy = live.busy !== null;
 
@@ -113,18 +108,6 @@ export function CompetitionControlPage() {
         <div className="control-deck">
           {state.status === 'DRAFT' && <button type="button" className="btn btn--primary" disabled={busy} onClick={() => void live.run('open')}>Open registration</button>}
           {state.status === 'WAITING' && <button type="button" className="btn btn--gold" disabled={busy || !state.queue.length} onClick={() => void live.run('start')}>Start competition</button>}
-          {running && state.queue.some((q) => q.status === 'PENDING') && (
-            <>
-              <button type="button" className="btn btn--primary" disabled={busy} onClick={() => void live.run('publish')}>
-                Release next question
-              </button>
-              <button type="button" className="btn" disabled={busy} onClick={() => void live.run('release-all')}>
-                Release all questions
-              </button>
-            </>
-          )}
-          {running && <button type="button" className="btn" disabled={busy} onClick={() => void live.run('pause')}>Pause</button>}
-          {paused && <button type="button" className="btn btn--gold" disabled={busy} onClick={() => void live.run('resume')}>Resume</button>}
           {active && <button type="button" className="btn btn--danger" disabled={busy} onClick={() => setConfirm('end')}>End competition</button>}
           {!finished && <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => setConfirm('cancel')}>Cancel competition</button>}
         </div>
@@ -133,7 +116,7 @@ export function CompetitionControlPage() {
       </Panel>
 
       <div className="grid grid--stats">
-        <StatCard label="Competition time" value={formatClock(competitionLeft)} hint={paused ? 'Paused' : state.endsAt ? 'Remaining' : 'Duration'} />
+        <StatCard label="Time per student" value={formatClock(state.durationSeconds * 1000)} hint="Each timer starts at Start Test" />
         <StatCard label="Participants" value={live.participants ?? '—'} hint={live.connected !== null ? `${live.connected} connected now` : 'Live count updates as students connect'} />
         <StatCard label="Total questions" value={directQuestions.length} hint="Available to participants" />
         <StatCard label="Status" value={state.status} />
@@ -142,12 +125,10 @@ export function CompetitionControlPage() {
       {active && (
         <Panel title="Competition in progress">
           <p className="muted" style={{ margin: 0 }}>
-            Participants are answering questions at their own pace within the competition's overall duration. Submissions are locked immediately upon answer.
+            Students click Start Test when ready and answer at their own pace; each has their own {formatDuration(state.durationSeconds)} timer. Answers lock as soon as they are submitted. End the competition when everyone is done: it stops anyone still answering.
           </p>
         </Panel>
       )}
-
-      {paused && <Alert tone="warning" title="Paused">All clocks are frozen. Students cannot submit until you resume.</Alert>}
 
       <Panel
         title={`Questions (${directQuestions.length})`}
@@ -206,16 +187,6 @@ export function CompetitionControlPage() {
                       )}
                       <span className="queue-item__text" style={{ fontWeight: 600 }}>{q.questionText}</span>
                     </div>
-                    {running && isPending && (
-                      <button
-                        type="button"
-                        className="btn btn--small btn--primary"
-                        disabled={busy}
-                        onClick={() => void live.run('publish', queueItem.questionId)}
-                      >
-                        Release now
-                      </button>
-                    )}
                   </div>
                 <div className="grid grid--2" style={{ gap: 4, paddingLeft: 28, fontSize: '0.85rem' }}>
                   {q.options.map((opt, i) => (
@@ -245,7 +216,7 @@ export function CompetitionControlPage() {
       <ConfirmDialog
         open={confirm !== null}
         title={confirm === 'end' ? 'End the competition now?' : 'Cancel this competition?'}
-        message={confirm === 'end' ? 'Submissions stop immediately, the live question closes and final scores are calculated. This cannot be undone.' : 'The competition will be marked cancelled. This cannot be undone.'}
+        message={confirm === 'end' ? 'Submissions stop immediately for anyone still answering and final scores are calculated. This cannot be undone.' : 'The competition will be marked cancelled. This cannot be undone.'}
         confirmLabel={confirm === 'end' ? 'End competition' : 'Cancel competition'}
         busy={busy}
         onConfirm={async () => {
